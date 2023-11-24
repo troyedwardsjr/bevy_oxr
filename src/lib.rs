@@ -3,6 +3,7 @@ pub mod input;
 pub mod resource_macros;
 pub mod resources;
 pub mod xr_input;
+pub mod webxr; // Add a new module for WebXR
 
 use std::sync::{Arc, Mutex};
 
@@ -25,6 +26,9 @@ use xr_input::controllers::XrControllerType;
 use xr_input::hands::emulated::HandEmulationPlugin;
 use xr_input::hands::hand_tracking::{HandTrackingData, HandTrackingPlugin};
 use xr_input::OpenXrInput;
+
+#[cfg(feature = "webxr")]
+use webxr::*; // Import the WebXR module when the "webxr" feature is enabled
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
 
@@ -70,6 +74,7 @@ impl Plugin for OpenXrPlugin {
             SystemState::new(&mut app.world);
         let primary_window = system_state.get(&app.world).get_single().ok().cloned();
 
+        #[cfg(feature = "openxr")]
         let (
             device,
             queue,
@@ -88,6 +93,27 @@ impl Plugin for OpenXrPlugin {
             views,
             frame_state,
         ) = graphics::initialize_xr_graphics(primary_window).unwrap();
+
+        #[cfg(feature = "webxr")]
+        let (
+            device,
+            queue,
+            adapter_info,
+            render_adapter,
+            instance,
+            xr_instance,
+            session,
+            blend_mode,
+            resolution,
+            format,
+            session_running,
+            frame_waiter,
+            swapchain,
+            input,
+            views,
+            frame_state,
+        ) = webxr::initialize_webxr_graphics(primary_window).unwrap(); // Initialize WebXR when the "webxr" feature is enabled
+
         // std::thread::sleep(Duration::from_secs(5));
         debug!("Configured wgpu adapter Limits: {:#?}", device.limits());
         debug!("Configured wgpu adapter Features: {:#?}", device.features());
@@ -361,6 +387,7 @@ pub fn end_frame(
             &input.stage,
             **resolution,
             **environment_blend_mode,
+            
         );
         match result {
             Ok(_) => {}
